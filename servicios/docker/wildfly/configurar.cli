@@ -1,0 +1,9 @@
+embed-server --server-config=standalone-full.xml --std-out=echo
+/subsystem=datasources/data-source=RegistryDS:add(jndi-name=java:jboss/datasources/RegistryDS, driver-name=h2, connection-url="jdbc:h2:mem:registry;DB_CLOSE_DELAY=-1", user-name=sa, password=sa)
+/subsystem=datasources/data-source=NotificationDS:add(jndi-name=java:jboss/datasources/NotificationDS, driver-name=h2, connection-url="jdbc:h2:mem:notification;DB_CLOSE_DELAY=-1", user-name=sa, password=sa)
+/subsystem=messaging-activemq/server=default/jms-queue=DisasterReceived:add(entries=[java:/jms/queue/DisasterReceived])
+/subsystem=messaging-activemq/server=default/jms-topic=DisasterRegistered:add(entries=[java:/jms/topic/DisasterRegistered])
+/socket-binding-group=standard-sockets/remote-destination-outbound-socket-binding=mail-smtp:write-attribute(name=host, value=mailhog)
+/socket-binding-group=standard-sockets/remote-destination-outbound-socket-binding=mail-smtp:write-attribute(name=port, value=1025)
+/subsystem=undertow/server=default-server/host=default-host/location=\/:remove
+stop-embedded-server

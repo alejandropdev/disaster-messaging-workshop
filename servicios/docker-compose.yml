@@ -1,0 +1,16 @@
+services:
+  wildfly:
+    build: .
+    container_name: dm-servicios
+    ports: ["8080:8080"]
+    depends_on: [mailhog]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/registry/api/disasters || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: dm-mailhog-srv
+    ports: ["8025:8025"]
