@@ -1,4 +1,5 @@
 package co.edu.javeriana.dm.registry;
+
 import jakarta.json.bind.Jsonb;
 import jakarta.json.bind.JsonbBuilder;
 

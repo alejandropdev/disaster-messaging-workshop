@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Uso: pruebas-e2e.sh <url-desastres> <url-suscriptores> <url-mailhog>
-# Ej:  pruebas-e2e.sh http://localhost:8080/api http://localhost:8080/api http://localhost:8025
+# Uso: pruebas-e2e.sh [url-envio] [url-consulta] [url-suscriptores] [url-mailhog]
+# Sin argumentos apunta a la variante tiers (todo en localhost:8080).
 set -u
-DISASTERS="${1:-http://localhost:8080/api}"
-SUBSCRIBERS="${2:-$DISASTERS}"
-MAIL="${3:-http://localhost:8025}"
+SEND="${1:-http://localhost:8080/api}"
+QUERY="${2:-$SEND}"
+SUBSCRIBERS="${3:-$QUERY}"
+MAIL="${4:-http://localhost:8025}"
 JSON='Content-Type: application/json'
 ok=0; fail=0
 
@@ -21,6 +22,8 @@ wait_for() {
   return 1
 }
 
+wait_for "curl -s -o /dev/null -w '%{http_code}' $QUERY/disasters" 200
+wait_for "curl -s -o /dev/null -w '%{http_code}' $SUBSCRIBERS/subscribers" 200
 curl -s -X DELETE "$MAIL/api/v1/messages" >/dev/null
 
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "$JSON" "$SUBSCRIBERS/subscribers" \
@@ -35,17 +38,17 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "$JSON" "$SUBSCRIBERS/s
   -d '{"name":"X","channel":"EMAIL","contact":"sin-arroba"}')
 check "rechazar correo inválido" "$code" 400
 
-code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "$JSON" "$DISASTERS/disasters" \
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "$JSON" "$SEND/disasters" \
   -d '{"location":"Bogotá","severity":"ALTA"}')
 check "rechazar desastre sin tipo" "$code" 400
 
-resp=$(curl -s -w '\n%{http_code}' -X POST -H "$JSON" "$DISASTERS/disasters" \
+resp=$(curl -s -w '\n%{http_code}' -X POST -H "$JSON" "$SEND/disasters" \
   -d '{"type":"Sismo","location":"Bogotá","severity":"ALTA","description":"Magnitud 6.1"}')
 check "recibir desastre (202)" "$(echo "$resp" | tail -1)" 202
 rid=$(echo "$resp" | head -1 | jq -r .reportId)
 
-wait_for "curl -s $DISASTERS/disasters | jq -r --arg id $rid '[.[]|select(.reportId==\$id)]|length'" 1
-check "desastre registrado" "$(curl -s "$DISASTERS/disasters" | jq -r --arg id "$rid" '[.[]|select(.reportId==$id)]|length')" 1
+wait_for "curl -s $QUERY/disasters | jq -r --arg id $rid '[.[]|select(.reportId==\$id)]|length'" 1
+check "desastre registrado" "$(curl -s "$QUERY/disasters" | jq -r --arg id "$rid" '[.[]|select(.reportId==$id)]|length')" 1
 
 wait_for "curl -s $MAIL/api/v2/messages | jq .total" 1
 check "un correo entregado" "$(curl -s "$MAIL/api/v2/messages" | jq .total)" 1

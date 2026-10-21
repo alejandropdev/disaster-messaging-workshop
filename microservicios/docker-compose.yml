@@ -1,0 +1,46 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: dm-rabbitmq
+    ports: ["15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: dm-mailhog-ms
+    ports: ["8025:8025"]
+
+  registry:
+    build: ./registry
+    container_name: dm-registry
+    ports: ["8082:8080"]
+    environment:
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+
+  notification:
+    build: ./notification
+    container_name: dm-notification
+    ports: ["8083:8080"]
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      SMTP_HOST: mailhog
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      mailhog: { condition: service_started }
+
+  intake:
+    build: ./intake
+    container_name: dm-intake
+    ports: ["8081:8080"]
+    environment:
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      registry: { condition: service_started }
+      notification: { condition: service_started }
